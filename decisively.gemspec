@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
                   "with temperature calibration and a Rails integration."
   s.authors     = ["Jim McKerchar"]
   s.email       = ["jim.mckerchar@gmail.com"]
-  s.homepage    = "https://github.com/jimmckerchar/decisive"
+  s.homepage    = "https://github.com/jimmckerchar/decisively"
   s.license     = "MIT"
   s.files       = Dir["lib/**/*.rb", "README.md", "LICENSE.txt"]
   s.require_paths = ["lib"]
