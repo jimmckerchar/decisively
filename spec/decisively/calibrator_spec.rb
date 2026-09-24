@@ -1,4 +1,4 @@
-RSpec.describe Decisive::Calibrator do
+RSpec.describe Decisively::Calibrator do
   describe ".apply" do
     let(:dist) { { "a" => 0.7, "b" => 0.2, "c" => 0.1 } }
 

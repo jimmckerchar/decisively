@@ -1,12 +1,12 @@
-# Decisive
+# Decisively
 
 Laya/Jev-style "System 1" decisions for Ruby: state in, typed answer + probabilities out.
 No text generation, no parsing. Runs locally via ONNX (the `informers` gem).
 
 ```ruby
-Decisive.choice(text, options: %w[billing bug account])     # => Decision(value: "billing", confidence: 0.91, ...)
-Decisive.bool(text, statement: "This message is spam.")     # => Decision(value: true, ...)
-Decisive.score(text, criterion: "The customer is angry.")   # => Decision(value: 0.83, ...)
+Decisively.choice(text, options: %w[billing bug account])     # => Decision(value: "billing", confidence: 0.91, ...)
+Decisively.bool(text, statement: "This message is spam.")     # => Decision(value: true, ...)
+Decisively.score(text, criterion: "The customer is angry.")   # => Decision(value: 0.83, ...)
 ```
 
 ## Installation
@@ -15,21 +15,19 @@ Decisive.score(text, criterion: "The customer is angry.")   # => Decision(value:
 bundle add decisively   # or: gem install decisively
 ```
 
-The gem is named `decisively` (`decisive` was taken on RubyGems); the library itself is `Decisive`.
-
 ## Rails
 
 ```ruby
 # Gemfile
 gem "decisively"
 
-# config/initializers/decisive.rb
-Decisive.configure { |c| c.max_options = 20 }
-Decisive.warm! unless Rails.env.test?
+# config/initializers/decisively.rb
+Decisively.configure { |c| c.max_options = 20 }
+Decisively.warm! unless Rails.env.test?
 
 # app/models/ticket.rb
 class Ticket < ApplicationRecord
-  include Decisive::Decidable
+  include Decisively::Decidable
   decides :category, from: [:subject, :body], choices: %w[billing bug feature_request account]
 end
 ```
@@ -41,7 +39,7 @@ Results are cached in `Rails.cache` automatically.
 Raw zero-shot probabilities are overconfident. Fit a temperature on ~100+ labeled examples:
 
 ```ruby
-Decisive.calibrate!(examples)  # => { temperature: 1.85, ece_before: 0.21, ece_after: 0.08 }
+Decisively.calibrate!(examples)  # => { temperature: 1.85, ece_before: 0.21, ece_after: 0.08 }
 ```
 
 Persist the temperature and set `c.temperature = 1.85` in the initializer.
@@ -49,7 +47,7 @@ Persist the temperature and set `c.temperature = 1.85` in the initializer.
 ## How it differs from Laya
 
 - Laya is a trained 421M decision model that scores all options in one forward pass.
-  Decisive uses an off-the-shelf NLI cross-encoder, which runs one pass *per option*,
+  Decisively uses an off-the-shelf NLI cross-encoder, which runs one pass *per option*,
   so latency grows with option count.
 - Zero-shot NLI generalizes worse than a purpose-trained decision model. For accuracy,
   fine-tune an NLI model on your labels and export it to ONNX, then set `c.model`.
@@ -65,4 +63,4 @@ bundle exec rspec        # or: bundle exec rake
 ```
 
 Specs stub the Informers pipeline, so they run offline without downloading a model.
-`Decisive::Decidable` can be used without Rails: `require "decisive/decidable"` (needs `activesupport`).
+`Decisively::Decidable` can be used without Rails: `require "decisively/decidable"` (needs `activesupport`).

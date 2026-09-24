@@ -1,4 +1,4 @@
-module Decisive
+module Decisively
   class Engine
     def initialize(config)
       @config     = config
@@ -52,7 +52,7 @@ module Decisive
     end
 
     def classify(input, labels, multi_label:, template:)
-      key = "decisive:" + Digest::SHA256.hexdigest([@config.model, input, labels, multi_label, template].inspect)
+      key = "decisively:" + Digest::SHA256.hexdigest([@config.model, input, labels, multi_label, template].inspect)
       cached(key) do
         out = @run_lock.synchronize do
           pipeline.(input.to_s, labels, multi_label: multi_label, hypothesis_template: template)

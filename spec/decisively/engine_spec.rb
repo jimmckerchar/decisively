@@ -1,7 +1,7 @@
-RSpec.describe Decisive::Engine do
+RSpec.describe Decisively::Engine do
   subject(:engine) { described_class.new(config) }
 
-  let(:config)   { Decisive::Config.new }
+  let(:config)   { Decisively::Config.new }
   let(:scores)   { { "billing" => 0.7, "bug" => 0.2, "account" => 0.1 } }
   let(:pipeline) { FakePipeline.new(scores) }
 
@@ -138,7 +138,7 @@ RSpec.describe Decisive::Engine do
       2.times { engine.choice("same", options: %w[billing bug]) }
       expect(pipeline.calls.size).to eq(1)
       expect(cache.fetches.map { _1[:expires_in] }).to all(eq(60))
-      expect(cache.store.keys).to all(start_with("decisive:"))
+      expect(cache.store.keys).to all(start_with("decisively:"))
     end
 
     it "uses distinct keys for different inputs, labels and models" do

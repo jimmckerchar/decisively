@@ -1,4 +1,4 @@
-module Decisive
+module Decisively
   # Temperature scaling, the same post-hoc trick Laya uses to get its ECE down.
   module Calibrator
     module_function

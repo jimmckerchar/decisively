@@ -1,4 +1,4 @@
-require "decisive"
+require "decisively"
 
 # Stands in for the Informers zero-shot pipeline so specs never load a model.
 # `scores` maps label => probability; unknown labels score 0.0.
@@ -38,7 +38,7 @@ RSpec.configure do |config|
   config.expect_with(:rspec) { |c| c.syntax = :expect }
 
   config.after do
-    Decisive.instance_variable_set(:@config, nil)
-    Decisive.engine = nil
+    Decisively.instance_variable_set(:@config, nil)
+    Decisively.engine = nil
   end
 end

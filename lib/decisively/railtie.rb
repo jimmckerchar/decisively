@@ -1,9 +1,9 @@
 require_relative "decidable"
 
-module Decisive
+module Decisively
   class Railtie < ::Rails::Railtie
     config.after_initialize do
-      Decisive.config.cache ||= Rails.cache
+      Decisively.config.cache ||= Rails.cache
     end
   end
 end

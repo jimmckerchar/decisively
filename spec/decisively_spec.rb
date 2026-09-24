@@ -1,6 +1,6 @@
-RSpec.describe Decisive do
+RSpec.describe Decisively do
   it "has a version number" do
-    expect(Decisive::VERSION).to match(/\A\d+\.\d+\.\d+/)
+    expect(Decisively::VERSION).to match(/\A\d+\.\d+\.\d+/)
   end
 
   describe ".config / .configure" do
@@ -17,7 +17,7 @@ RSpec.describe Decisive do
   end
 
   describe "delegation to the engine" do
-    let(:engine) { instance_double(Decisive::Engine) }
+    let(:engine) { instance_double(Decisively::Engine) }
 
     before { described_class.engine = engine }
 
@@ -39,7 +39,7 @@ RSpec.describe Decisive do
 
   describe ".engine" do
     it "builds and memoises an engine from the config" do
-      expect(described_class.engine).to be_a(Decisive::Engine).and equal(described_class.engine)
+      expect(described_class.engine).to be_a(Decisively::Engine).and equal(described_class.engine)
     end
   end
 
