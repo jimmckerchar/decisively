@@ -1,7 +1,7 @@
 require_relative "lib/decisive/version"
 
 Gem::Specification.new do |s|
-  s.name        = "decisive"
+  s.name        = "decisively"
   s.version     = Decisive::VERSION
   s.summary     = "Laya/Jev-style typed decisions (choice, bool, score) running locally in Ruby"
   s.description = "State in, typed answer + probabilities out. Zero-shot NLI decisions via ONNX, " \

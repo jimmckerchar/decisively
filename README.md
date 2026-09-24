@@ -9,11 +9,19 @@ Decisive.bool(text, statement: "This message is spam.")     # => Decision(value:
 Decisive.score(text, criterion: "The customer is angry.")   # => Decision(value: 0.83, ...)
 ```
 
+## Installation
+
+```sh
+bundle add decisively   # or: gem install decisively
+```
+
+The gem is named `decisively` (`decisive` was taken on RubyGems); the library itself is `Decisive`.
+
 ## Rails
 
 ```ruby
 # Gemfile
-gem "decisive", path: "vendor/decisive"
+gem "decisively"
 
 # config/initializers/decisive.rb
 Decisive.configure { |c| c.max_options = 20 }
