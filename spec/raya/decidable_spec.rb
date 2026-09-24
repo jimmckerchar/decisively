@@ -1,9 +1,9 @@
-require "decisively/decidable"
+require "raya/decidable"
 
-RSpec.describe Decisively::Decidable do
+RSpec.describe Raya::Decidable do
   let(:model_class) do
     Class.new do
-      include Decisively::Decidable
+      include Raya::Decidable
       attr_accessor :subject, :body, :category, :priority
 
       def self.priorities = { "low" => 0, "high" => 1 }
@@ -17,35 +17,35 @@ RSpec.describe Decisively::Decidable do
   let(:record) { model_class.new.tap { |r| r.subject = "Charged twice"; r.body = "Please refund" } }
 
   def decision(value, confidence)
-    Decisively::Decision.new(type: :choice, value:, confidence:, distribution: {})
+    Raya::Decision.new(type: :choice, value:, confidence:, distribution: {})
   end
 
   it "joins the source fields and assigns the chosen value" do
-    allow(Decisively).to receive(:choice).and_return(decision("billing", 0.9))
+    allow(Raya).to receive(:choice).and_return(decision("billing", 0.9))
 
     d = record.decide_category
 
-    expect(Decisively).to have_received(:choice).with("Charged twice\n\nPlease refund", options: %w[billing bug])
+    expect(Raya).to have_received(:choice).with("Charged twice\n\nPlease refund", options: %w[billing bug])
     expect(record.category).to eq("billing")
     expect(d.value).to eq("billing")
   end
 
   it "skips nil source fields" do
     record.subject = nil
-    allow(Decisively).to receive(:choice).and_return(decision("bug", 0.9))
+    allow(Raya).to receive(:choice).and_return(decision("bug", 0.9))
     record.decide_category
-    expect(Decisively).to have_received(:choice).with("Please refund", options: anything)
+    expect(Raya).to have_received(:choice).with("Please refund", options: anything)
   end
 
   it "evaluates lambda choices in the instance's context" do
-    allow(Decisively).to receive(:choice).and_return(decision("high", 0.9))
+    allow(Raya).to receive(:choice).and_return(decision("high", 0.9))
     record.decide_priority
-    expect(Decisively).to have_received(:choice).with("Please refund", options: %w[low high])
+    expect(Raya).to have_received(:choice).with("Please refund", options: %w[low high])
     expect(record.priority).to eq("high")
   end
 
   it "assigns the fallback below min_confidence but still returns the decision" do
-    allow(Decisively).to receive(:choice).and_return(decision("high", 0.5))
+    allow(Raya).to receive(:choice).and_return(decision("high", 0.5))
     d = record.decide_priority
     expect(record.priority).to eq("normal")
     expect(d.value).to eq("high")

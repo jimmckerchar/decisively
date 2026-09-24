@@ -1,8 +1,8 @@
 require "active_support/concern"
 
-module Decisively
+module Raya
   # class Ticket < ApplicationRecord
-  #   include Decisively::Decidable
+  #   include Raya::Decidable
   #   decides :category, from: [:subject, :body], choices: %w[billing bug feature_request account]
   #   decides :priority, from: :body, choices: -> { self.class.priorities.keys }, min_confidence: 0.6, fallback: "normal"
   # end
@@ -16,7 +16,7 @@ module Decisively
         define_method("decide_#{attribute}") do
           opts = choices.respond_to?(:call) ? instance_exec(&choices) : choices
           text = Array(from).map { |f| public_send(f) }.compact.join("\n\n")
-          decision = Decisively.choice(text, options: opts)
+          decision = Raya.choice(text, options: opts)
           public_send("#{attribute}=", decision.confidence >= min_confidence ? decision.value : fallback)
           decision
         end

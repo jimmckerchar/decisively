@@ -1,6 +1,6 @@
-RSpec.describe Decisively do
+RSpec.describe Raya do
   it "has a version number" do
-    expect(Decisively::VERSION).to match(/\A\d+\.\d+\.\d+/)
+    expect(Raya::VERSION).to match(/\A\d+\.\d+\.\d+/)
   end
 
   describe ".config / .configure" do
@@ -17,7 +17,7 @@ RSpec.describe Decisively do
   end
 
   describe "delegation to the engine" do
-    let(:engine) { instance_double(Decisively::Engine) }
+    let(:engine) { instance_double(Raya::Engine) }
 
     before { described_class.engine = engine }
 
@@ -39,7 +39,7 @@ RSpec.describe Decisively do
 
   describe ".engine" do
     it "builds and memoises an engine from the config" do
-      expect(described_class.engine).to be_a(Decisively::Engine).and equal(described_class.engine)
+      expect(described_class.engine).to be_a(Raya::Engine).and equal(described_class.engine)
     end
   end
 

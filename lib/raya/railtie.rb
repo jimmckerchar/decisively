@@ -1,9 +1,9 @@
 require_relative "decidable"
 
-module Decisively
+module Raya
   class Railtie < ::Rails::Railtie
     config.after_initialize do
-      Decisively.config.cache ||= Rails.cache
+      Raya.config.cache ||= Rails.cache
     end
   end
 end

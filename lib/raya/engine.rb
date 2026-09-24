@@ -1,4 +1,4 @@
-module Decisively
+module Raya
   class Engine
     def initialize(config)
       @config     = config
@@ -52,7 +52,7 @@ module Decisively
     end
 
     def classify(input, labels, multi_label:, template:)
-      key = "decisively:" + Digest::SHA256.hexdigest([@config.model, input, labels, multi_label, template].inspect)
+      key = "raya:" + Digest::SHA256.hexdigest([@config.model, input, labels, multi_label, template].inspect)
       cached(key) do
         out = @run_lock.synchronize do
           pipeline.(input.to_s, labels, multi_label: multi_label, hypothesis_template: template)

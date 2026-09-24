@@ -1,12 +1,12 @@
 require "informers"
 require "digest"
-require_relative "decisively/version"
-require_relative "decisively/decision"
-require_relative "decisively/calibrator"
-require_relative "decisively/engine"
-require_relative "decisively/railtie" if defined?(Rails::Railtie)
+require_relative "raya/version"
+require_relative "raya/decision"
+require_relative "raya/calibrator"
+require_relative "raya/engine"
+require_relative "raya/railtie" if defined?(Rails::Railtie)
 
-module Decisively
+module Raya
   class Error < StandardError; end
 
   class Config
@@ -16,7 +16,7 @@ module Decisively
       # Any NLI zero-shot model with ONNX weights works; swap in a multilingual one if you need it.
       @model               = "Xenova/mobilebert-uncased-mnli"
       @hypothesis_template = "This example is about {}."
-      @temperature         = 1.0   # set by Decisively.calibrate!
+      @temperature         = 1.0   # set by Raya.calibrate!
       @cache               = nil   # anything with #fetch(key, expires_in:) e.g. Rails.cache
       @cache_ttl           = 3600
       @max_options         = 20

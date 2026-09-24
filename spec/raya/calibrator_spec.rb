@@ -1,4 +1,4 @@
-RSpec.describe Decisively::Calibrator do
+RSpec.describe Raya::Calibrator do
   describe ".apply" do
     let(:dist) { { "a" => 0.7, "b" => 0.2, "c" => 0.1 } }
 
