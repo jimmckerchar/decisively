@@ -1,4 +1,4 @@
-require "raya"
+require "layar"
 
 # Stands in for the Informers zero-shot pipeline so specs never load a model.
 # `scores` maps label => probability; unknown labels score 0.0.
@@ -38,7 +38,7 @@ RSpec.configure do |config|
   config.expect_with(:rspec) { |c| c.syntax = :expect }
 
   config.after do
-    Raya.instance_variable_set(:@config, nil)
-    Raya.engine = nil
+    Layar.instance_variable_set(:@config, nil)
+    Layar.engine = nil
   end
 end

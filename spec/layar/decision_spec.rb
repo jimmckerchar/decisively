@@ -1,4 +1,4 @@
-RSpec.describe Raya::Decision do
+RSpec.describe Layar::Decision do
   subject(:decision) { described_class.new(type: :choice, value: "billing", confidence: 0.8, distribution: {}, latency_ms: 1.0) }
 
   describe "#confident?" do

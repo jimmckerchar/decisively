@@ -1,12 +1,12 @@
 require "informers"
 require "digest"
-require_relative "raya/version"
-require_relative "raya/decision"
-require_relative "raya/calibrator"
-require_relative "raya/engine"
-require_relative "raya/railtie" if defined?(Rails::Railtie)
+require_relative "layar/version"
+require_relative "layar/decision"
+require_relative "layar/calibrator"
+require_relative "layar/engine"
+require_relative "layar/railtie" if defined?(Rails::Railtie)
 
-module Raya
+module Layar
   class Error < StandardError; end
 
   class Config
@@ -16,7 +16,7 @@ module Raya
       # Any NLI zero-shot model with ONNX weights works; swap in a multilingual one if you need it.
       @model               = "Xenova/mobilebert-uncased-mnli"
       @hypothesis_template = "This example is about {}."
-      @temperature         = 1.0   # set by Raya.calibrate!
+      @temperature         = 1.0   # set by Layar.calibrate!
       @cache               = nil   # anything with #fetch(key, expires_in:) e.g. Rails.cache
       @cache_ttl           = 3600
       @max_options         = 20

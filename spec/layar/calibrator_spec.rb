@@ -1,4 +1,4 @@
-RSpec.describe Raya::Calibrator do
+RSpec.describe Layar::Calibrator do
   describe ".apply" do
     let(:dist) { { "a" => 0.7, "b" => 0.2, "c" => 0.1 } }
 

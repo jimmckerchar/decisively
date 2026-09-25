@@ -1,14 +1,14 @@
-require_relative "lib/raya/version"
+require_relative "lib/layar/version"
 
 Gem::Specification.new do |s|
-  s.name        = "raya"
-  s.version     = Raya::VERSION
+  s.name        = "layar"
+  s.version     = Layar::VERSION
   s.summary     = "Laya/Jev-style typed decisions (choice, bool, score) running locally in Ruby"
   s.description = "State in, typed answer + probabilities out. Zero-shot NLI decisions via ONNX, " \
                   "with temperature calibration and a Rails integration."
   s.authors     = ["Jim McKerchar"]
   s.email       = ["jim.mckerchar@gmail.com"]
-  s.homepage    = "https://github.com/jimmckerchar/raya"
+  s.homepage    = "https://github.com/jimmckerchar/layar"
   s.license     = "MIT"
   s.files       = Dir["lib/**/*.rb", "README.md", "LICENSE.txt"]
   s.require_paths = ["lib"]
