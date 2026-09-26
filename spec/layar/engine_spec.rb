@@ -5,14 +5,14 @@ RSpec.describe Layar::Engine do
   let(:scores)   { { "billing" => 0.7, "bug" => 0.2, "account" => 0.1 } }
   let(:pipeline) { FakePipeline.new(scores) }
 
-  before { allow(Informers).to receive(:pipeline).and_return(pipeline) }
+  before { allow(Layar::ZeroShot).to receive(:load).and_return(pipeline) }
 
   describe "#warm!" do
     it "loads the configured zero-shot model once and returns self" do
       config.model = "some/model"
       expect(engine.warm!).to equal(engine)
       engine.warm!
-      expect(Informers).to have_received(:pipeline).with("zero-shot-classification", "some/model").once
+      expect(Layar::ZeroShot).to have_received(:load).with("some/model").once
     end
   end
 
@@ -99,7 +99,7 @@ RSpec.describe Layar::Engine do
 
     it "returns true when entailment >= 0.5" do
       pipeline = FakePipeline.new(statement => 0.8)
-      allow(Informers).to receive(:pipeline).and_return(pipeline)
+      allow(Layar::ZeroShot).to receive(:load).and_return(pipeline)
 
       d = engine.bool("win a cruise", statement:)
       expect(d).to have_attributes(type: :bool, value: true, confidence: 0.8)
@@ -108,14 +108,14 @@ RSpec.describe Layar::Engine do
     end
 
     it "returns false with the probability of false as confidence" do
-      allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statement => 0.1))
+      allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new(statement => 0.1))
       d = engine.bool("hi mum", statement:)
       expect(d.value).to be(false)
       expect(d.confidence).to be_within(1e-9).of(0.9)
     end
 
     it "treats exactly 0.5 as true" do
-      allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statement => 0.5))
+      allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new(statement => 0.5))
       expect(engine.bool("x", statement:).value).to be(true)
     end
 
@@ -128,13 +128,13 @@ RSpec.describe Layar::Engine do
       let(:statements) { ["The sender is offering a prize.", "The message asks you to click a link."] }
 
       it "is true if any statement holds, with the strongest as confidence" do
-        allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statements[0] => 0.1, statements[1] => 0.9))
+        allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new(statements[0] => 0.1, statements[1] => 0.9))
         d = engine.bool("click here", statement: statements)
         expect(d).to have_attributes(value: true, confidence: 0.9)
       end
 
       it "is false when none hold" do
-        allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statements[0] => 0.1, statements[1] => 0.2))
+        allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new(statements[0] => 0.1, statements[1] => 0.2))
         d = engine.bool("hi mum", statement: statements)
         expect(d.value).to be(false)
         expect(d.confidence).to be_within(1e-9).of(0.8)
@@ -152,7 +152,7 @@ RSpec.describe Layar::Engine do
     end
 
     it "applies temperature" do
-      allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statement => 0.9))
+      allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new(statement => 0.9))
       expect(engine.bool("x", statement:, temperature: 3.0).confidence).to be < 0.9
     end
   end
@@ -160,7 +160,7 @@ RSpec.describe Layar::Engine do
   describe "#score" do
     let(:criterion) { "The customer is angry." }
 
-    before { allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(criterion => 0.834567)) }
+    before { allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new(criterion => 0.834567)) }
 
     it "returns the rounded entailment probability with no confidence" do
       d = engine.score("fix it now", criterion:)
@@ -207,7 +207,7 @@ RSpec.describe Layar::Engine do
 
   it "accepts string-keyed pipeline output" do
     string_keyed = ->(*, **) { { "labels" => %w[bug billing], "scores" => [0.6, 0.4] } }
-    allow(Informers).to receive(:pipeline).and_return(string_keyed)
+    allow(Layar::ZeroShot).to receive(:load).and_return(string_keyed)
     expect(engine.choice("x", options: %w[billing bug]).value).to eq("bug")
   end
 end

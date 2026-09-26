@@ -1,6 +1,6 @@
 require "layar"
 
-# Stands in for the Informers zero-shot pipeline so specs never load a model.
+# Stands in for Layar::ZeroShot (the zero-shot NLI model) so specs never load a model.
 # `scores` maps label => probability; unknown labels score 0.0.
 class FakePipeline
   attr_reader :calls

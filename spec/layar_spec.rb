@@ -50,7 +50,7 @@ RSpec.describe Layar do
     end
 
     before do
-      allow(Informers).to receive(:pipeline).and_return(FakePipeline.new("a" => 0.95, "b" => 0.05))
+      allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new("a" => 0.95, "b" => 0.05))
     end
 
     it "fits a temperature, stores it in config and reports ECE before/after" do

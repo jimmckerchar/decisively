@@ -47,8 +47,9 @@ Persist the temperature and set `c.temperature = 1.85` in the initializer.
 ## How it differs from Laya
 
 - Laya is a trained 421M decision model that scores all options in one forward pass.
-  Layar uses an off-the-shelf NLI cross-encoder, which runs one pass *per option*,
-  so latency grows with option count.
+  Layar uses an off-the-shelf NLI cross-encoder, which needs one pass *per option*
+  (input and option are read together). Layar batches those passes into one model call,
+  so they run in parallel across CPU cores, but latency still grows with option count.
 - Zero-shot NLI generalizes worse than a purpose-trained decision model. For accuracy,
   fine-tune an NLI model on your labels and export it to ONNX, then set `c.model`.
 - Like Laya, keep option sets small; use coarse-to-fine hierarchies for many labels.
@@ -62,5 +63,11 @@ bundle install
 bundle exec rspec        # or: bundle exec rake
 ```
 
-Specs stub the Informers pipeline, so they run offline without downloading a model.
+Specs stub the model, so they run offline without downloading anything. End-to-end specs
+against the real model are opt-in (slow; needs ~3 GB RAM for the default model):
+
+```sh
+LAYAR_REAL_MODEL=1 bundle exec rspec spec/real_model_spec.rb
+```
+
 `Layar::Decidable` can be used without Rails: `require "layar/decidable"` (needs `activesupport`).

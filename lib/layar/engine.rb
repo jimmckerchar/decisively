@@ -89,7 +89,7 @@ module Layar
 
     def pipeline
       @pipeline || @load_lock.synchronize do
-        @pipeline ||= Informers.pipeline("zero-shot-classification", @config.model)
+        @pipeline ||= ZeroShot.load(@config.model)
       end
     end
 

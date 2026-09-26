@@ -3,6 +3,7 @@ require "digest"
 require_relative "layar/version"
 require_relative "layar/decision"
 require_relative "layar/calibrator"
+require_relative "layar/zero_shot"
 require_relative "layar/engine"
 require_relative "layar/railtie" if defined?(Rails::Railtie)
 
