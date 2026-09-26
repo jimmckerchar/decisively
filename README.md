@@ -1,5 +1,7 @@
 # Layar
 
+[![CI](https://github.com/jimmckerchar/layar/actions/workflows/ci.yml/badge.svg)](https://github.com/jimmckerchar/layar/actions/workflows/ci.yml)
+
 Laya/Jev-style "System 1" decisions for Ruby: state in, typed answer + probabilities out.
 No text generation, no parsing. Runs locally via ONNX Runtime on [Laya](https://huggingface.co/convaiinnovations/laya)
 itself (the default) or on a zero-shot NLI model.
@@ -20,7 +22,8 @@ That's all. The first decision downloads the multilingual Laya model (1.3 GB, on
 [distinctinteractive/laya-onnx](https://huggingface.co/distinctinteractive/laya-onnx) into
 `~/.cache/informers`; call `Layar.warm!` at boot to do that up front. It needs ~2 GB of RAM while
 loaded. Needs Ruby 3.3+; the `onnxruntime` and `tokenizers` gems it depends on ship prebuilt
-binaries for common platforms, so there is nothing to compile (tested on x86-64 Linux).
+binaries, so there is nothing to compile. CI installs the gem from scratch and decides with it
+on Linux, macOS (arm64) and Windows.
 
 To download somewhere else, or to run without network access, set `Informers.cache_dir`, or copy
 a checkpoint folder from that repository and point `c.laya_model` at it.
