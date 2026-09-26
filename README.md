@@ -19,7 +19,7 @@ bundle add layar   # or: gem install layar
 That's all. The first decision downloads the multilingual Laya model (1.3 GB, once) from
 [distinctinteractive/laya-onnx](https://huggingface.co/distinctinteractive/laya-onnx) into
 `~/.cache/informers`; call `Layar.warm!` at boot to do that up front. It needs ~2 GB of RAM while
-loaded. Needs Ruby 3.1+; the `onnxruntime` and `tokenizers` gems it depends on ship prebuilt
+loaded. Needs Ruby 3.3+; the `onnxruntime` and `tokenizers` gems it depends on ship prebuilt
 binaries for common platforms, so there is nothing to compile (tested on x86-64 Linux).
 
 To download somewhere else, or to run without network access, set `Informers.cache_dir`, or copy
@@ -175,7 +175,7 @@ the `laya` 0.3.20 Python package.
 
 ## Development
 
-Requires Ruby >= 3.1.
+Requires Ruby >= 3.3.
 
 ```sh
 bundle install

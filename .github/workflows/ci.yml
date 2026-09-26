@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  specs:
+    name: Specs (Ruby ${{ matrix.ruby }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.3", "3.4", "4.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      # Offline: the model is stubbed. Real-model specs are opt-in (LAYAR_REAL_MODEL=1).
+      - run: bundle exec rspec
+
+  install:
+    # A clean machine: the built gem's dependencies come from rubygems.org and the model from
+    # the Hugging Face Hub, then script/smoke.rb decides with no configuration.
+    name: Fresh install (${{ matrix.os }})
+    needs: specs
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+      - name: Build and install the gem
+        shell: bash
+        run: |
+          gem build layar.gemspec -o "$RUNNER_TEMP/layar.gem"
+          gem install --no-document "$RUNNER_TEMP/layar.gem"
+      - name: Cache the downloaded model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/informers
+          key: laya-model-${{ runner.os }}-${{ hashFiles('lib/layar/laya.rb') }}
+      - name: Decide with no configuration
+        shell: bash
+        # Run outside the checkout so the installed gem is used, not lib/.
+        run: cd "$RUNNER_TEMP" && ruby "$GITHUB_WORKSPACE/script/smoke.rb"

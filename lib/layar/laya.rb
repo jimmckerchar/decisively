@@ -23,6 +23,9 @@ module Layar
 
     # Hugging Face repo holding ONNX exports of each checkpoint (made with script/laya/export.py).
     HUB_REPO    = "distinctinteractive/laya-onnx"
+    # Named checkpoints download from this commit, so a later upload can't change a released gem's
+    # model (or invalidate calibrations fitted against it). Bump it deliberately, with a release.
+    HUB_REVISION = "fcb4cae677a627400db0a50fddf9986e06e2b804"
     CHECKPOINTS = %w[multilingual english].freeze
     FILES       = %w[model.onnx model.onnx.data tokenizer.json tokenizer_config.json rl_agent_config.json].freeze
 
@@ -41,18 +44,18 @@ module Layar
 
     # => local directory holding FILES
     def self.download(model)
-      repo, subfolder =
+      repo, subfolder, revision =
         if CHECKPOINTS.include?(model)
-          [HUB_REPO, model]
+          [HUB_REPO, model, HUB_REVISION]
         elsif (parts = model.split("/")).size >= 3 && parts.none?(&:empty?)
-          [parts.first(2).join("/"), parts.drop(2).join("/")]
+          [parts.first(2).join("/"), parts.drop(2).join("/"), "main"]
         else
           raise ArgumentError, "Laya model #{model.inspect} is not a local directory, a checkpoint " \
                                "(#{CHECKPOINTS.join(', ')}) or owner/repo/subfolder on the Hugging Face Hub"
         end
 
       paths = FILES.map do |file|
-        Informers::Utils::Hub.get_model_file(repo, "#{subfolder}/#{file}", true,
+        Informers::Utils::Hub.get_model_file(repo, "#{subfolder}/#{file}", true, revision:,
                                              progress_callback: Informers::DEFAULT_PROGRESS_CALLBACK)
       end
       File.dirname(paths.first)

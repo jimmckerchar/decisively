@@ -221,17 +221,23 @@ RSpec.describe Layar::Laya do
       allow(hub).to receive(:get_model_file) { |repo, file, *| "/cache/#{repo}/#{file}" }
     end
 
-    it "fetches every file of a named checkpoint from Layar's Hub repo" do
+    it "fetches every file of a named checkpoint from Layar's Hub repo, at the pinned revision" do
       expect(described_class.download("multilingual")).to eq("/cache/distinctinteractive/laya-onnx/multilingual")
       described_class::FILES.each do |file|
         expect(hub).to have_received(:get_model_file)
-          .with("distinctinteractive/laya-onnx", "multilingual/#{file}", true, progress_callback: anything)
+          .with("distinctinteractive/laya-onnx", "multilingual/#{file}", true,
+                revision: described_class::HUB_REVISION, progress_callback: anything)
       end
     end
 
-    it "accepts owner/repo/subfolder" do
+    it "pins a full commit hash" do
+      expect(described_class::HUB_REVISION).to match(/\A\h{40}\z/)
+    end
+
+    it "accepts owner/repo/subfolder, following main" do
       expect(described_class.download("acme/laya-exports/v2/english")).to eq("/cache/acme/laya-exports/v2/english")
-      expect(hub).to have_received(:get_model_file).with("acme/laya-exports", "v2/english/model.onnx", true, anything)
+      expect(hub).to have_received(:get_model_file)
+        .with("acme/laya-exports", "v2/english/model.onnx", true, revision: "main", progress_callback: anything)
     end
 
     it "explains what it accepts otherwise" do
