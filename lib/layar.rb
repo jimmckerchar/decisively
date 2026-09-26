@@ -4,6 +4,7 @@ require_relative "layar/version"
 require_relative "layar/decision"
 require_relative "layar/calibrator"
 require_relative "layar/zero_shot"
+require_relative "layar/laya"
 require_relative "layar/engine"
 require_relative "layar/railtie" if defined?(Rails::Railtie)
 
@@ -11,17 +12,29 @@ module Layar
   class Error < StandardError; end
 
   class Config
-    attr_accessor :model, :hypothesis_template, :temperature, :cache, :cache_ttl, :max_options
+    attr_accessor :model, :hypothesis_template, :laya_model, :question, :temperature, :cache, :cache_ttl, :max_options
+    attr_reader :backend
 
     def initialize
       # Any NLI zero-shot model with ONNX weights that informers supports (bert, distilbert, roberta,
       # xlm-roberta, modernbert, bart). "Xenova/distilbert-base-uncased-mnli" is ~5x faster but less accurate.
       @model               = "Xenova/bart-large-mnli"
       @hypothesis_template = "This example is about {}."
+      # :nli runs the zero-shot NLI `model` above, one pass per option.
+      # :laya runs a Laya decision model (ONNX export in `laya_model`), one pass per question.
+      @backend             = :nli
+      @laya_model          = nil   # directory with model.onnx, tokenizer.json, tokenizer_config.json, rl_agent_config.json
+      @question            = "What is this about?"   # what Laya is asked for `choice` without `question:`
       @temperature         = 1.0   # set by Layar.calibrate!
       @cache               = nil   # anything with #fetch(key, expires_in:) e.g. Rails.cache
       @cache_ttl           = 3600
       @max_options         = 20
+    end
+
+    def backend=(value)
+      value = value.to_sym
+      raise ArgumentError, "unknown backend #{value.inspect}; use :nli or :laya" unless %i[nli laya].include?(value)
+      @backend = value
     end
   end
 

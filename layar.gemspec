@@ -17,4 +17,6 @@ Gem::Specification.new do |s|
   s.metadata["rubygems_mfa_required"] = "true"
 
   s.add_dependency "informers", "~> 1.0"
+  s.add_dependency "onnxruntime", "~> 0.9"   # Laya backend (also used by informers)
+  s.add_dependency "tokenizers", "~> 0.6"
 end

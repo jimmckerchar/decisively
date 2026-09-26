@@ -5,3 +5,6 @@
 Gemfile.lock
 .rspec_status
 /.idea/
+/models/
+/.laya/
+__pycache__/

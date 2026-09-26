@@ -1,0 +1,8 @@
+# Python side of the Laya backend: exporting checkpoints to ONNX and recording reference fixtures.
+# Install torch from the CPU index to skip the CUDA libraries:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+#   pip install -r script/laya/requirements.txt
+laya==0.3.20
+onnx
+onnxruntime
+onnxscript

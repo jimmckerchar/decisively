@@ -6,8 +6,15 @@ RSpec.describe Layar do
   describe ".config / .configure" do
     it "has sensible defaults" do
       expect(described_class.config).to have_attributes(
-        model: "Xenova/bart-large-mnli", temperature: 1.0, cache: nil, cache_ttl: 3600, max_options: 20
+        model: "Xenova/bart-large-mnli", temperature: 1.0, cache: nil, cache_ttl: 3600, max_options: 20,
+        backend: :nli, laya_model: nil, question: "What is this about?"
       )
+    end
+
+    it "accepts :nli or :laya (as symbol or string) and rejects other backends" do
+      described_class.config.backend = "laya"
+      expect(described_class.config.backend).to eq(:laya)
+      expect { described_class.config.backend = :gpt }.to raise_error(ArgumentError, /unknown backend :gpt/)
     end
 
     it "yields the config for mutation" do

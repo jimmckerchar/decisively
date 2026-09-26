@@ -45,3 +45,24 @@ RSpec.configure do |config|
     Layar.engine = nil
   end
 end
+
+# Stands in for Layar::Laya. `answers` maps an instructions string to option probabilities.
+class FakeLaya
+  attr_reader :calls
+
+  def initialize(answers = {})
+    @answers = answers
+    @calls   = []
+  end
+
+  def predict(state, questions)
+    @calls << { state:, questions: }
+    questions.to_h do |id, q|
+      probs = @answers.fetch(q[:instructions]) do
+        keys = q[:type] == :noul ? [false, true] : (q[:criteria].is_a?(Hash) ? q[:criteria].keys : q[:criteria])
+        keys.to_h { |k| [k, 1.0 / keys.size] }
+      end
+      [id, probs]
+    end
+  end
+end
