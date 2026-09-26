@@ -134,6 +134,37 @@ RSpec.describe Layar::Engine, "with the Laya backend" do
     it "only applies to the statement it was fitted for" do
       expect(engine.bool("x", statement: "Is the customer happy?").distribution[true]).to eq(0.5)
     end
+
+    context "with a fingerprinted fit" do
+      let(:fit) { { scale: 1.0, shift: 2.0, fitted_for: engine.calibration_fingerprint(yes: "angry", no: "calm") } }
+
+      before { config.bool_calibrations["Is the customer angry?"] = fit }
+
+      it "applies it when the model and descriptions match" do
+        d = engine.bool("x", statement: "Is the customer angry?", yes: "angry", no: "calm")
+        expect(d.value).to be(true)
+      end
+
+      it "warns once and skips it when the descriptions changed" do
+        expect {
+          2.times { expect(engine.bool("x", statement: "Is the customer angry?", yes: "furious", no: "calm").value).to be(false) }
+        }.to output(/ignoring the calibration for "Is the customer angry\?".*Refit/).to_stderr
+        expect { engine.bool("x", statement: "Is the customer angry?", yes: "furious", no: "calm") }.not_to output.to_stderr
+      end
+
+      it "skips it when the model changed" do
+        fit # fingerprint taken with the original model
+        laya.identity = "another-encoder/rl-agent/9"
+        expect { expect(engine.bool("x", statement: "Is the customer angry?", yes: "angry", no: "calm").value).to be(false) }
+          .to output(/different model/).to_stderr
+      end
+    end
+
+    it "fingerprints the NLI model and Laya checkpoint differently" do
+      laya_print = engine.calibration_fingerprint
+      config.backend = :nli
+      expect(described_class.new(config).calibration_fingerprint).not_to eq(laya_print)
+    end
   end
 end
 

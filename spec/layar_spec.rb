@@ -88,6 +88,7 @@ RSpec.describe Layar do
       described_class.config.backend = :laya
       described_class.config.laya_model = "/models/laya"
       laya = Object.new
+      laya.define_singleton_method(:identity) { "fake-encoder/rl-agent/1" }
       scores_by_input = scores
       laya.define_singleton_method(:predict) do |input, questions|
         questions.transform_values { { false => 1 - scores_by_input.fetch(input), true => scores_by_input.fetch(input) } }
@@ -98,7 +99,7 @@ RSpec.describe Layar do
     it "fits a cut-off, stores it for the statement and reports before/after" do
       result = described_class.calibrate_bool!(examples, statement:)
 
-      expect(described_class.config.bool_calibrations[statement]).to eq(result.slice(:scale, :shift))
+      expect(described_class.config.bool_calibrations[statement]).to eq(result.slice(:scale, :shift, :fitted_for))
       expect(result[:accuracy_before]).to be_within(1e-3).of(8 / 12.0)
       expect(result[:accuracy_after]).to eq(1.0)
       expect(result[:threshold]).to be_between(0.004, 0.03)

@@ -72,10 +72,11 @@ module Layar
     #
     #   Layar.calibrate_bool!(examples, statement: "Is the customer angry?")
     #   examples: [{ input: "...", answer: true }, ...]  (both answers needed; 50+ of each is better)
-    #   # => { scale: 1.1, shift: 3.2, threshold: 0.05, accuracy_before: 0.67, accuracy_after: 0.92, ... }
+    #   # => { scale: 1.1, shift: 3.2, fitted_for: "9f2c…", threshold: 0.05, accuracy_before: 0.67, ... }
     #
     # `threshold` is the raw probability that now maps to 0.5. Persist the fit with
-    # c.bool_calibrations[statement] = { scale:, shift: }.
+    # c.bool_calibrations[statement] = { scale:, shift:, fitted_for: }. `fitted_for` records the model
+    # and descriptions it was fitted with; #bool warns and skips the fit if either changes.
     def calibrate_bool!(examples, statement:, **kw)
       raw = examples.map do |ex|
         d = engine.bool(ex[:input], statement:, temperature: 1.0, calibrate: false, **kw)
@@ -83,8 +84,9 @@ module Layar
       end
       fit   = Calibrator.fit_platt(raw)
       after = raw.map { |p, yes| [Calibrator.apply_platt(p, fit), yes] }
+      fit   = fit.merge(fitted_for: engine.calibration_fingerprint(yes: kw[:yes], no: kw[:no]))
       engine.config.bool_calibrations[statement] = fit
-      threshold = Calibrator.sigmoid(-fit[:shift] / fit[:scale])
+      threshold = Calibrator.sigmoid(-fit[:shift] / fit[:scale])   # raw probability that now maps to 0.5
       fit.merge(
         threshold: threshold.round(4),
         accuracy_before: bool_accuracy(raw).round(3), accuracy_after: bool_accuracy(after).round(3),

@@ -51,13 +51,20 @@ module Layar
 
       timed(:bool) do
         p_yes = yes_probabilities(input, statements, yes:, no:).values.max
-        if calibrate && (calibration = @config.bool_calibrations[statement])
+        if calibrate && (calibration = usable_calibration(statement, yes:, no:))
           p_yes = Calibrator.apply_platt(p_yes, calibration)
         end
         dist  = Calibrator.apply({ true => p_yes, false => 1.0 - p_yes }, temperature || @config.temperature)
         value = dist[true] >= 0.5
         [value, dist[value], dist]
       end
+    end
+
+    # What a bool calibration was fitted for: the model and the yes:/no: descriptions. A fit is only
+    # valid for the combination it saw, so Layar.calibrate_bool! records this and #bool checks it.
+    def calibration_fingerprint(yes: nil, no: nil)
+      model = laya? ? "laya:#{laya.identity}" : "nli:#{@config.model}"
+      Digest::SHA256.hexdigest([model, yes, no].inspect)[0, 16]
     end
 
     # 0.0..1.0 — how strongly the input supports `criterion`, e.g. "The customer is angry."
@@ -91,6 +98,22 @@ module Layar
     end
 
     def laya? = @config.backend == :laya
+
+    # A stored fit, unless it was made for another model or other descriptions (then warn once and skip).
+    # Fits without a fingerprint (written by hand) are trusted.
+    def usable_calibration(statement, yes:, no:)
+      calibration = @config.bool_calibrations[statement] or return nil
+      fitted_for = calibration[:fitted_for] or return calibration
+      return calibration if fitted_for == calibration_fingerprint(yes:, no:)
+
+      @stale_warned ||= {}
+      unless @stale_warned[statement]
+        @stale_warned[statement] = true
+        warn "Layar: ignoring the calibration for #{statement.inspect}: it was fitted for a different model or " \
+             "yes:/no: descriptions. Refit with Layar.calibrate_bool!."
+      end
+      nil
+    end
 
     def laya_predict(input, questions)
       key = "layar:" + Digest::SHA256.hexdigest([:laya, @config.laya_model, input, questions].inspect)

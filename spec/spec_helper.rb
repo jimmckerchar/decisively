@@ -49,10 +49,12 @@ end
 # Stands in for Layar::Laya. `answers` maps an instructions string to option probabilities.
 class FakeLaya
   attr_reader :calls
+  attr_accessor :identity
 
-  def initialize(answers = {})
-    @answers = answers
-    @calls   = []
+  def initialize(answers = {}, identity: "fake-encoder/rl-agent/1")
+    @answers  = answers
+    @calls    = []
+    @identity = identity
   end
 
   def predict(state, questions)

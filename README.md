@@ -80,40 +80,56 @@ Laya ships overconfident (the multilingual checkpoint has no fitted temperatures
 questions or claims ("This message is spam." told all 9 spam and ordinary messages apart), but
 narrow ones mislead it as they do NLI ("The message asks you to click a link." flags ordinary requests).
 
-### Yes/no questions: descriptions and calibration
+### Yes/no questions: wording, calibration and descriptions
 
-Laya can rank well but score low. It put every angry message above every calm one in our checks, yet
-scored "This is the third time I've asked. Fix it now." at 0.10, so at 0.5 it missed most of them.
-Two things help, and help most together:
+Laya can rank well but score low: it put "This is the third time I've asked. Fix it now." at 0.10
+for anger. Three things help, in this order:
 
-```ruby
-angry = { statement: "Is the customer angry?",
-          yes: "the customer is angry, frustrated, impatient or demanding",   # :laya backend only
-          no:  "the customer is calm, neutral, polite or happy" }
+1. **Wording.** Try several phrasings on labelled data and keep the best. For anger, "Does the writer
+   express anger, irritation or hostility?" beat "Is the writer angry or annoyed?" on the English
+   checkpoint, and naming what it is *not* ("…rather than sad or worried?") helped multilingual.
+2. **Calibration.** Fit a cut-off on labelled examples; unlike temperature it can move the cut-off,
+   in either direction:
 
-# Fit a cut-off on labelled examples (both answers; 50+ of each is better than our 12).
-Layar.calibrate_bool!(examples, **angry)
-# => { scale: 1.15, shift: 0.9, threshold: 0.313, accuracy_before: 0.92, accuracy_after: 0.92, ... }
+   ```ruby
+   angry = { statement: "Does the writer express anger, irritation or hostility?" }
+   Layar.calibrate_bool!(examples, **angry)   # examples: [{ input: "...", answer: true }, ...]
+   # => e.g. { scale: 1.1, shift: 0.9, fitted_for: "3b1f09c2e7d4a8f6", threshold: 0.31, accuracy_before: 0.75, ... }
+   Layar.bool(message, **angry)               # applies the stored fit
+   ```
 
-Layar.bool(message, **angry)   # applies the fit stored for this statement
-```
+   Use 100+ examples: fitted on 20, test accuracy fell to 53-57% on unlucky draws; fitted on
+   100, it stayed within a point of fitting on all 200.
+3. **`yes:`/`no:` descriptions** (`:laya` only) describe each answer to the model. Test them on your
+   data: they helped on hand-written messages but *hurt* ranking on the real comments below.
 
 `threshold` is the raw probability that now maps to 0.5. The fit is stored per statement in
-`c.bool_calibrations`; persist it in your initializer
-(`c.bool_calibrations["Is the customer angry?"] = { scale: 1.15, shift: 0.9 }`) and refit if you
-change the statement, its descriptions or the model. Unlike temperature, the fit can move the
-cut-off, in either direction.
+`c.bool_calibrations`; persist it in your initializer:
 
-Calibrated on 12 messages and tested on 12 different ones (`spec/laya_real_model_spec.rb`):
+```ruby
+c.bool_calibrations["Does the writer express anger, irritation or hostility?"] =
+  { scale: 1.1, shift: 0.9, fitted_for: "3b1f09c2e7d4a8f6" }
+```
 
-| | raw | calibrated |
-|---|---|---|
-| multilingual, plain question | 7/12 | 10/12 |
-| multilingual, with `yes:`/`no:` | 8/12 | 11/12 |
-| english, plain question | 8/12 | 11/12 |
-| english, with `yes:`/`no:` | 9/12 | 12/12 |
+`fitted_for` fingerprints the model and the `yes:`/`no:` descriptions the fit was made with. If
+either changes, `bool` warns once and ignores the fit rather than applying a stale one, so refit.
 
-For emotions in English-only text the `english` checkpoint is stronger. Sarcasm is the hardest case.
+#### How well it works on real text
+
+On 450 Reddit comments from GoEmotions, labelled by people (`script/eval/anger.rb`; wording chosen
+and calibration fitted on 200 separate comments):
+
+| | ranking (AUC) | accuracy | angry caught | calm flagged | sad/worried flagged |
+|---|---|---|---|---|---|
+| english, best wording, calibrated | 0.85 | 76.9% | 74.5% | 18.0% | 26.0% |
+| multilingual, best wording, calibrated | 0.79 | 73.6% | 73.5% | 22.0% | 33.0% |
+| multilingual, plain question, raw | 0.78 | 64.7% | 32.0% | 4.0% | 17.0% |
+| bart-large-mnli (NLI), calibrated | 0.75 | 67.6% | 69.5% | 26.0% | 46.0% |
+
+Treat anger as a signal to rank or triage by, not a verdict: about a quarter of sad or worried
+messages still read as angry, and sarcasm is hard for every model tried. GoEmotions labels are
+noisy (people often disagree on "annoyance"), so these figures understate a little, and Reddit is
+not your inbox: evaluate on your own messages.
 
 ### Exporting Laya to ONNX
 

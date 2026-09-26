@@ -40,11 +40,15 @@ module Layar
       @mask      = special_tokens.fetch("mask_token")
       @cls_id, @sep_id, @mask_id, @pad_id =
         %w[cls_token sep_token mask_token pad_token].map { |t| token_id(special_tokens.fetch(t)) }
+      # Identifies the checkpoint (not where it lives), so calibrations can tell english from multilingual.
+      @identity     = [config["encoder"], config["model_name"], config.dig("training", "updates")].compact.join("/")
       @max_len      = config.fetch("max_len", 512)
       @head_max_len = config.fetch("head_max_len", 192)
       @temperature  = config.fetch("temperature", [1.0, 1.0, 1.0]).map { |t| clamp_temperature(t) }
       @temperature_by_options = config.fetch("temperature_by_options", {}).transform_values { |t| clamp_temperature(t) }
     end
+
+    attr_reader :identity
 
     # state: a String, or a Hash/Array (sent as JSON; an Array is a conversation, truncated from the left).
     # questions: { id => { type: :choice | :noul | :score, instructions: String, criteria: ... } }
