@@ -13,8 +13,9 @@ module Layar
     attr_accessor :model, :hypothesis_template, :temperature, :cache, :cache_ttl, :max_options
 
     def initialize
-      # Any NLI zero-shot model with ONNX weights works; swap in a multilingual one if you need it.
-      @model               = "Xenova/mobilebert-uncased-mnli"
+      # Any NLI zero-shot model with ONNX weights that informers supports (bert, distilbert, roberta,
+      # xlm-roberta, modernbert, bart). "Xenova/distilbert-base-uncased-mnli" is ~5x faster but less accurate.
+      @model               = "Xenova/bart-large-mnli"
       @hypothesis_template = "This example is about {}."
       @temperature         = 1.0   # set by Layar.calibrate!
       @cache               = nil   # anything with #fetch(key, expires_in:) e.g. Rails.cache

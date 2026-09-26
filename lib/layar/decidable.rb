@@ -3,7 +3,8 @@ require "active_support/concern"
 module Layar
   # class Ticket < ApplicationRecord
   #   include Layar::Decidable
-  #   decides :category, from: [:subject, :body], choices: %w[billing bug feature_request account]
+  #   decides :category, from: [:subject, :body],
+  #                      choices: { "billing" => "billing", "bug" => "a bug", "feature_request" => "a feature request" }
   #   decides :priority, from: :body, choices: -> { self.class.priorities.keys }, min_confidence: 0.6, fallback: "normal"
   # end
   #

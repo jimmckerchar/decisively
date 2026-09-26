@@ -12,25 +12,31 @@ module Layar
     end
 
     # Pick one of N options. Returns a Decision with a full probability distribution.
+    # `options` is an Array of labels, or a Hash of { value => description } when the value you
+    # store (e.g. "feature_request") reads worse to the model than a plain description ("a feature request").
     def choice(input, options:, temperature: nil, template: nil)
-      options = options.map(&:to_s).uniq
+      options = normalize_options(options)
       raise ArgumentError, "choice needs at least 2 options" if options.size < 2
       if options.size > @config.max_options
         raise ArgumentError, "#{options.size} options; split into a coarse-to-fine hierarchy (max #{@config.max_options})"
       end
 
       timed(:choice) do
-        raw  = classify(input, options, multi_label: false, template: template || @config.hypothesis_template)
-        dist = Calibrator.apply(options.to_h { |o| [o, raw.fetch(o, 0.0)] }, temperature || @config.temperature)
+        raw  = classify(input, options.values, multi_label: false, template: template || @config.hypothesis_template)
+        dist = Calibrator.apply(options.to_h { |value, label| [value, raw.fetch(label, 0.0)] }, temperature || @config.temperature)
         best, conf = dist.max_by { |_, p| p }
         [best, conf, dist]
       end
     end
 
-    # Yes/no. Phrase `statement` as a claim, e.g. "This message is spam."
+    # Yes/no. Phrase `statement` as a concrete claim about the content, e.g. "The sender is offering a prize."
+    # Pass an Array of statements to answer true if any of them holds (the most likely one decides).
     def bool(input, statement:, temperature: nil)
+      statements = Array(statement).map(&:to_s).uniq
+      raise ArgumentError, "bool needs at least 1 statement" if statements.empty?
+
       timed(:bool) do
-        p_yes = entailment(input, statement)
+        p_yes = entailments(input, statements).values.max
         dist  = Calibrator.apply({ true => p_yes, false => 1.0 - p_yes }, temperature || @config.temperature)
         value = dist[true] >= 0.5
         [value, dist[value], dist]
@@ -40,15 +46,28 @@ module Layar
     # 0.0..1.0 — how strongly the input supports `criterion`, e.g. "The customer is angry."
     def score(input, criterion:)
       timed(:score) do
-        p = entailment(input, criterion)
+        p = entailments(input, [criterion]).values.first
         [p.round(4), nil, { criterion => p }]
       end
     end
 
     private
 
-    def entailment(input, statement)
-      classify(input, [statement], multi_label: true, template: "{}").values.first.to_f
+    # Scores each statement independently (multi-label), so the probabilities don't compete.
+    def entailments(input, statements)
+      raw = classify(input, statements, multi_label: true, template: "{}")
+      statements.to_h { |s| [s, raw.fetch(s, 0.0).to_f] }
+    end
+
+    # => { value => label shown to the model }
+    def normalize_options(options)
+      pairs = options.is_a?(Hash) ? options.map { |v, l| [v.to_s, l.to_s] } : options.map { |o| [o.to_s, o.to_s] }
+      pairs = pairs.uniq(&:first)
+      labels = pairs.map(&:last)
+      if labels.uniq.size != labels.size
+        raise ArgumentError, "options have duplicate descriptions: #{labels.tally.select { |_, n| n > 1 }.keys.inspect}"
+      end
+      pairs.to_h
     end
 
     def classify(input, labels, multi_label:, template:)

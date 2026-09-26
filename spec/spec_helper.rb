@@ -37,6 +37,9 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
   config.expect_with(:rspec) { |c| c.syntax = :expect }
 
+  # Specs tagged :real_model download and run the actual model; opt in with LAYAR_REAL_MODEL=1.
+  config.filter_run_excluding(:real_model) unless ENV["LAYAR_REAL_MODEL"]
+
   config.after do
     Layar.instance_variable_set(:@config, nil)
     Layar.engine = nil

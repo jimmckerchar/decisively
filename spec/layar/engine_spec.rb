@@ -62,6 +62,27 @@ RSpec.describe Layar::Engine do
       expect(engine.choice("x", options:, temperature: 1.0).confidence).to eq(0.7)
     end
 
+    context "with a Hash of value => description" do
+      let(:options) { { "billing" => "payments", bug: "something broken", "account" => "logging in" } }
+      let(:scores)  { { "payments" => 0.1, "something broken" => 0.8, "logging in" => 0.1 } }
+
+      it "shows the model the descriptions" do
+        engine.choice("x", options:)
+        expect(pipeline.calls.last[:labels]).to eq(["payments", "something broken", "logging in"])
+      end
+
+      it "returns and keys the distribution by the (stringified) values" do
+        d = engine.choice("x", options:)
+        expect(d.value).to eq("bug")
+        expect(d.distribution).to eq("billing" => 0.1, "bug" => 0.8, "account" => 0.1)
+      end
+
+      it "rejects two values sharing one description" do
+        expect { engine.choice("x", options: { "a" => "same", "b" => "same" }) }
+          .to raise_error(ArgumentError, /duplicate descriptions: \["same"\]/)
+      end
+    end
+
     it "requires at least two options" do
       expect { engine.choice("x", options: %w[billing billing]) }
         .to raise_error(ArgumentError, /at least 2 options/)
@@ -101,6 +122,33 @@ RSpec.describe Layar::Engine do
     it "queries the statement verbatim, multi-label" do
       engine.bool("x", statement:)
       expect(pipeline.calls.last).to include(labels: [statement], multi_label: true, hypothesis_template: "{}")
+    end
+
+    context "with several statements" do
+      let(:statements) { ["The sender is offering a prize.", "The message asks you to click a link."] }
+
+      it "is true if any statement holds, with the strongest as confidence" do
+        allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statements[0] => 0.1, statements[1] => 0.9))
+        d = engine.bool("click here", statement: statements)
+        expect(d).to have_attributes(value: true, confidence: 0.9)
+      end
+
+      it "is false when none hold" do
+        allow(Informers).to receive(:pipeline).and_return(FakePipeline.new(statements[0] => 0.1, statements[1] => 0.2))
+        d = engine.bool("hi mum", statement: statements)
+        expect(d.value).to be(false)
+        expect(d.confidence).to be_within(1e-9).of(0.8)
+      end
+
+      it "scores them independently in one multi-label call" do
+        engine.bool("x", statement: statements)
+        expect(pipeline.calls.size).to eq(1)
+        expect(pipeline.calls.last).to include(labels: statements, multi_label: true)
+      end
+    end
+
+    it "requires a statement" do
+      expect { engine.bool("x", statement: []) }.to raise_error(ArgumentError, /at least 1 statement/)
     end
 
     it "applies temperature" do

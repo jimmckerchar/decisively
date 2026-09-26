@@ -44,6 +44,15 @@ RSpec.describe Layar::Decidable do
     expect(record.priority).to eq("high")
   end
 
+  it "passes Hash choices through and assigns the value, not the description" do
+    model_class.decides :category, from: :body, choices: { "feature_request" => "a feature request", "bug" => "a bug" }
+    allow(Layar).to receive(:choice).and_return(decision("feature_request", 0.9))
+    record.decide_category
+    expect(Layar).to have_received(:choice)
+      .with("Please refund", options: { "feature_request" => "a feature request", "bug" => "a bug" })
+    expect(record.category).to eq("feature_request")
+  end
+
   it "assigns the fallback below min_confidence but still returns the decision" do
     allow(Layar).to receive(:choice).and_return(decision("high", 0.5))
     d = record.decide_priority

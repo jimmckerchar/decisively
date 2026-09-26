@@ -6,7 +6,7 @@ RSpec.describe Layar do
   describe ".config / .configure" do
     it "has sensible defaults" do
       expect(described_class.config).to have_attributes(
-        model: "Xenova/mobilebert-uncased-mnli", temperature: 1.0, cache: nil, cache_ttl: 3600, max_options: 20
+        model: "Xenova/bart-large-mnli", temperature: 1.0, cache: nil, cache_ttl: 3600, max_options: 20
       )
     end
 
