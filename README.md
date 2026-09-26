@@ -76,11 +76,44 @@ barely slowed down with 8 options, and told all 9 spam and ordinary messages apa
 bart-large-mnli managed at best 7. That is a small test set: check accuracy on your own data.
 
 Laya ships overconfident (the multilingual checkpoint has no fitted temperatures), so run
-`Layar.calibrate!` on labelled examples before gating on confidence. It is also conservative about
-emotions: "This is the third time I've asked. Fix it now." scored only 0.10-0.37 for anger across
-four phrasings (0.00 for a thank-you note), so compare `score` values rather than gating at 0.5.
-Broad statements work as questions or claims ("This message is spam." told all 9 apart), but narrow
-ones mislead it as they do NLI ("The message asks you to click a link." flags ordinary requests).
+`Layar.calibrate!` on labelled examples before gating on confidence. Broad statements work as
+questions or claims ("This message is spam." told all 9 spam and ordinary messages apart), but
+narrow ones mislead it as they do NLI ("The message asks you to click a link." flags ordinary requests).
+
+### Yes/no questions: descriptions and calibration
+
+Laya can rank well but score low. It put every angry message above every calm one in our checks, yet
+scored "This is the third time I've asked. Fix it now." at 0.10, so at 0.5 it missed most of them.
+Two things help, and help most together:
+
+```ruby
+angry = { statement: "Is the customer angry?",
+          yes: "the customer is angry, frustrated, impatient or demanding",   # :laya backend only
+          no:  "the customer is calm, neutral, polite or happy" }
+
+# Fit a cut-off on labelled examples (both answers; 50+ of each is better than our 12).
+Layar.calibrate_bool!(examples, **angry)
+# => { scale: 1.15, shift: 0.9, threshold: 0.313, accuracy_before: 0.92, accuracy_after: 0.92, ... }
+
+Layar.bool(message, **angry)   # applies the fit stored for this statement
+```
+
+`threshold` is the raw probability that now maps to 0.5. The fit is stored per statement in
+`c.bool_calibrations`; persist it in your initializer
+(`c.bool_calibrations["Is the customer angry?"] = { scale: 1.15, shift: 0.9 }`) and refit if you
+change the statement, its descriptions or the model. Unlike temperature, the fit can move the
+cut-off, in either direction.
+
+Calibrated on 12 messages and tested on 12 different ones (`spec/laya_real_model_spec.rb`):
+
+| | raw | calibrated |
+|---|---|---|
+| multilingual, plain question | 7/12 | 10/12 |
+| multilingual, with `yes:`/`no:` | 8/12 | 11/12 |
+| english, plain question | 8/12 | 11/12 |
+| english, with `yes:`/`no:` | 9/12 | 12/12 |
+
+For emotions in English-only text the `english` checkpoint is stronger. Sarcasm is the hardest case.
 
 ### Exporting Laya to ONNX
 

@@ -98,3 +98,63 @@ RSpec.describe "Layar with the Laya backend (multilingual)", :real_model do
     end
   end
 end
+
+RSpec.describe "Layar.calibrate_bool! with the Laya backend (multilingual)", :real_model do
+  before(:all) do
+    dir = ENV["LAYAR_LAYA_MODELS"] && File.join(ENV["LAYAR_LAYA_MODELS"], "multilingual")
+    @engine = Layar::Engine.new(Layar::Config.new.tap { |c| c.backend = :laya; c.laya_model = dir }).warm! if dir && File.directory?(dir)
+  end
+
+  after(:all) do
+    @engine = nil
+    GC.start
+  end
+
+  before do
+    skip "no multilingual export in LAYAR_LAYA_MODELS" unless @engine
+    Layar.engine = @engine
+  end
+
+  # Laya ranks angry above calm but scores anger low, so at 0.5 it misses most angry messages.
+  # A cut-off fitted on one set of messages should carry over to messages it has not seen.
+  train = { true  => ["This is the third time I've asked. Fix it now.",
+                      "I've been waiting two weeks for a refund and nobody replies. Unacceptable.",
+                      "WHY IS THE APP STILL BROKEN?? I pay for this!!",
+                      "Great, another update that deletes my data. Thanks a lot.",
+                      "If this isn't sorted by Friday I'm cancelling and telling everyone to avoid you.",
+                      "Your support is useless. I want to speak to a manager."],
+            false => ["Thanks so much, that fixed it!", "Hi, can you send me the invoice for last month?",
+                      "The export button doesn't seem to work on Safari, is that a known issue?",
+                      "Could we move our call to Thursday?", "I'm a bit confused about how the pricing tiers work.",
+                      "Love the new dashboard, great job team!"] }
+  held_out = { true  => ["I am extremely disappointed. I was promised a callback on Monday and heard nothing.",
+                         "Oh wonderful, charged AGAIN for a plan I cancelled. Brilliant service.",
+                         "Per my last three emails, the invoice is still wrong. Please escalate this immediately.",
+                         "This is ridiculous. Your app logged me out mid-payment and took the money anyway.",
+                         "Do not contact me again until you have an actual answer.",
+                         "Absolutely fed up with the constant outages. We're looking at other providers."],
+               false => ["Quick question: does the Pro plan include API access?",
+                         "Hi! Just letting you know the typo on the pricing page, no rush.",
+                         "I think I found a bug: the date picker shows the wrong month. Screenshot attached.",
+                         "Thank you for the refund, received it today.",
+                         "Can I add a second user to my account?",
+                         "Not sure if this is expected, but the report took a while to load this morning."] }
+
+  it "improves anger detection on held-out messages" do
+    statement = "Is the customer angry?"
+    options = { yes: "the customer is angry, frustrated, impatient or demanding",
+                no: "the customer is calm, neutral, polite or happy" }
+    correct = -> { held_out.sum { |answer, texts| texts.count { |t| Layar.bool(t, statement:, **options).value == answer } } }
+
+    Layar.config.bool_calibrations.clear
+    before_fit = correct.()
+    Layar.calibrate_bool!(train.flat_map { |answer, texts| texts.map { |t| { input: t, answer: } } }, statement:, **options)
+    after_fit = correct.()
+
+    expect(after_fit).to be > before_fit
+    expect(after_fit).to be >= 10
+  ensure
+    Layar.config.bool_calibrations.clear
+  end
+end
+

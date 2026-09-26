@@ -74,4 +74,60 @@ RSpec.describe Layar do
       expect(described_class.calibrate!(examples)[:ece_before]).to eq(0.35)
     end
   end
+
+  describe ".calibrate_bool!" do
+    let(:statement) { "Is the customer angry?" }
+    # Laya-like: angry messages score 0.1-0.56, calm ones ~0.
+    let(:scores) do
+      { "a1" => 0.10, "a2" => 0.25, "a3" => 0.56, "a4" => 0.03, "a5" => 0.10, "a6" => 0.56,
+        "c1" => 0.001, "c2" => 0.002, "c3" => 0.004, "c4" => 0.001, "c5" => 0.003, "c6" => 0.002 }
+    end
+    let(:examples) { scores.keys.map { |k| { input: k, answer: k.start_with?("a") } } }
+
+    before do
+      described_class.config.backend = :laya
+      described_class.config.laya_model = "/models/laya"
+      laya = Object.new
+      scores_by_input = scores
+      laya.define_singleton_method(:predict) do |input, questions|
+        questions.transform_values { { false => 1 - scores_by_input.fetch(input), true => scores_by_input.fetch(input) } }
+      end
+      allow(Layar::Laya).to receive(:load).and_return(laya)
+    end
+
+    it "fits a cut-off, stores it for the statement and reports before/after" do
+      result = described_class.calibrate_bool!(examples, statement:)
+
+      expect(described_class.config.bool_calibrations[statement]).to eq(result.slice(:scale, :shift))
+      expect(result[:accuracy_before]).to be_within(1e-3).of(8 / 12.0)
+      expect(result[:accuracy_after]).to eq(1.0)
+      expect(result[:threshold]).to be_between(0.004, 0.03)
+      expect(result[:ece_after]).to be < result[:ece_before]
+    end
+
+    it "fits on raw probabilities even when a calibration already exists" do
+      described_class.config.bool_calibrations[statement] = { scale: 5.0, shift: -9.0 }
+      expect(described_class.calibrate_bool!(examples, statement:)[:accuracy_before]).to be_within(1e-3).of(8 / 12.0)
+    end
+
+    it "makes Layar.bool use the fit" do
+      described_class.calibrate_bool!(examples, statement:)
+      expect(described_class.bool("a1", statement:).value).to be(true)
+      expect(described_class.bool("c3", statement:).value).to be(false)
+    end
+  end
+
+  describe "calibration with a replaced engine" do
+    it "stores fits on the running engine's config, not the module default" do
+      custom = Layar::Config.new
+      described_class.engine = Layar::Engine.new(custom)
+      allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new("a" => 0.95, "b" => 0.05))
+
+      described_class.calibrate!(Array.new(10) { |i| { input: "t#{i}", options: %w[a b], answer: i < 6 ? "a" : "b" } })
+
+      expect(custom.temperature).to be > 1.0
+      expect(described_class.config.temperature).to eq(1.0)
+    end
+  end
 end
+

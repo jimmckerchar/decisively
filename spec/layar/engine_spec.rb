@@ -147,6 +147,10 @@ RSpec.describe Layar::Engine do
       end
     end
 
+    it "rejects yes:/no: descriptions, which only the Laya backend understands" do
+      expect { engine.bool("x", statement:, yes: "spam") }.to raise_error(ArgumentError, /need the Laya backend/)
+    end
+
     it "requires a statement" do
       expect { engine.bool("x", statement: []) }.to raise_error(ArgumentError, /at least 1 statement/)
     end

@@ -1,5 +1,7 @@
 module Layar
   class Engine
+    attr_reader :config
+
     def initialize(config)
       @config     = config
       @load_lock  = Mutex.new
@@ -40,12 +42,18 @@ module Layar
     # Yes/no. Phrase `statement` as a concrete claim about the content, e.g. "The sender is offering a prize."
     # (the Laya backend also takes a question, e.g. "Is this message spam?").
     # Pass an Array of statements to answer true if any of them holds (the most likely one decides).
-    def bool(input, statement:, temperature: nil)
+    # `yes:` / `no:` describe each answer to the Laya backend ("the customer is angry, frustrated
+    # or impatient" / "calm, polite or happy"), which helps it place its cut-off.
+    # A calibration fitted by Layar.calibrate_bool! for this statement is applied unless `calibrate: false`.
+    def bool(input, statement:, temperature: nil, yes: nil, no: nil, calibrate: true)
       statements = Array(statement).map(&:to_s).uniq
       raise ArgumentError, "bool needs at least 1 statement" if statements.empty?
 
       timed(:bool) do
-        p_yes = yes_probabilities(input, statements).values.max
+        p_yes = yes_probabilities(input, statements, yes:, no:).values.max
+        if calibrate && (calibration = @config.bool_calibrations[statement])
+          p_yes = Calibrator.apply_platt(p_yes, calibration)
+        end
         dist  = Calibrator.apply({ true => p_yes, false => 1.0 - p_yes }, temperature || @config.temperature)
         value = dist[true] >= 0.5
         [value, dist[value], dist]
@@ -53,9 +61,10 @@ module Layar
     end
 
     # 0.0..1.0 — how strongly the input supports `criterion`, e.g. "The customer is angry."
-    def score(input, criterion:)
+    # Takes the same `yes:` / `no:` descriptions as #bool. Not calibrated: compare scores, or use #bool.
+    def score(input, criterion:, yes: nil, no: nil)
       timed(:score) do
-        p = yes_probabilities(input, [criterion]).values.first
+        p = yes_probabilities(input, [criterion], yes:, no:).values.first
         [p.round(4), nil, { criterion => p }]
       end
     end
@@ -64,11 +73,18 @@ module Layar
 
     # Scores each statement independently, so the probabilities don't compete: multi-label NLI,
     # or one yes/no question per statement batched into a single Laya call.
-    def yes_probabilities(input, statements)
+    def yes_probabilities(input, statements, yes: nil, no: nil)
       if laya?
-        answers = laya_predict(input, statements.each_with_index.to_h { |s, i| [i, { type: :noul, instructions: s }] })
+        criteria = { true => yes, false => no }.compact
+        questions = statements.each_with_index.to_h do |s, i|
+          [i, { type: :noul, instructions: s, **(criteria.empty? ? {} : { criteria: }) }]
+        end
+        answers = laya_predict(input, questions)
         statements.each_with_index.to_h { |s, i| [s, answers[i][true]] }
       else
+        if yes || no
+          raise ArgumentError, "yes:/no: descriptions need the Laya backend; NLI has nowhere to put them"
+        end
         raw = classify(input, statements, multi_label: true, template: "{}")
         statements.to_h { |s| [s, raw.fetch(s, 0.0).to_f] }
       end

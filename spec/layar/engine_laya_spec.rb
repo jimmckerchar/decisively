@@ -97,4 +97,43 @@ RSpec.describe Layar::Engine, "with the Laya backend" do
       expect(d).to have_attributes(type: :score, value: 0.75, confidence: nil)
     end
   end
+
+  describe "yes:/no: descriptions" do
+    it "sends them to Laya as noul criteria for bool and score" do
+      engine.bool("x", statement: "Is the customer angry?", yes: "angry or impatient", no: "calm or happy")
+      engine.score("x", criterion: "Is the customer angry?", yes: "angry or impatient")
+
+      expect(laya.calls.map { _1[:questions][0] }).to eq([
+        { type: :noul, instructions: "Is the customer angry?", criteria: { true => "angry or impatient", false => "calm or happy" } },
+        { type: :noul, instructions: "Is the customer angry?", criteria: { true => "angry or impatient" } },
+      ])
+    end
+
+    it "leaves criteria out when none are given" do
+      engine.bool("x", statement: "Is the customer angry?")
+      expect(laya.calls.last[:questions][0]).not_to have_key(:criteria)
+    end
+  end
+
+  describe "bool calibration" do
+    let(:answers) { { "Is the customer angry?" => { false => 0.7, true => 0.3 } } }
+
+    before { config.bool_calibrations["Is the customer angry?"] = { scale: 1.0, shift: 2.0 } }
+
+    it "applies the fit stored for the statement" do
+      d = engine.bool("x", statement: "Is the customer angry?")
+      expected = Layar::Calibrator.apply_platt(0.3, scale: 1.0, shift: 2.0)
+      expect(d.value).to be(true)
+      expect(d.distribution[true]).to be_within(1e-9).of(expected)
+    end
+
+    it "is skipped with calibrate: false" do
+      expect(engine.bool("x", statement: "Is the customer angry?", calibrate: false).distribution[true]).to eq(0.3)
+    end
+
+    it "only applies to the statement it was fitted for" do
+      expect(engine.bool("x", statement: "Is the customer happy?").distribution[true]).to eq(0.5)
+    end
+  end
 end
+

@@ -86,4 +86,53 @@ RSpec.describe Layar::Calibrator do
       expect { described_class.ece([[{ "a" => 1.0 }, "a"]], bins: 5) }.not_to raise_error
     end
   end
+
+  describe ".fit_platt / .apply_platt" do
+    # Ranks perfectly but scores low: every "yes" is below 0.5, every "no" near 0.
+    let(:low_but_ranked) do
+      [0.10, 0.25, 0.56, 0.03, 0.10, 0.56].map { [_1, true] } + [0.001, 0.002, 0.004, 0.001, 0.003, 0.002].map { [_1, false] }
+    end
+
+    def accuracy(pairs) = pairs.count { |p, yes| (p >= 0.5) == yes }
+
+    it "moves the cut-off so low-scoring yeses land above 0.5" do
+      fit = described_class.fit_platt(low_but_ranked)
+      calibrated = low_but_ranked.map { |p, yes| [described_class.apply_platt(p, fit), yes] }
+
+      expect(accuracy(low_but_ranked)).to eq(8)
+      expect(accuracy(calibrated)).to eq(12)
+      expect(fit[:shift]).to be > 0
+    end
+
+    it "stays finite on perfectly separated examples" do
+      fit = described_class.fit_platt(low_but_ranked)
+      expect(fit.values).to all(be_finite)
+      expect(described_class.apply_platt(0.56, fit)).to be < 1.0
+    end
+
+    it "recovers a known shift" do
+      rng = Random.new(1)
+      examples = Array.new(2000) do
+        x = rng.rand(-4.0..4.0)
+        truth = described_class.sigmoid(x + 1.5)            # true relationship
+        [described_class.sigmoid(x), rng.rand < truth]       # model reports sigmoid(x)
+      end
+      fit = described_class.fit_platt(examples)
+      expect(fit[:scale]).to be_within(0.2).of(1.0)
+      expect(fit[:shift]).to be_within(0.3).of(1.5)
+    end
+
+    it "is the identity for scale 1, shift 0" do
+      expect(described_class.apply_platt(0.3, scale: 1.0, shift: 0.0)).to be_within(1e-9).of(0.3)
+    end
+
+    it "handles probabilities of exactly 0 and 1" do
+      expect(described_class.apply_platt(0.0, scale: 1.0, shift: 2.0)).to be_between(0.0, 1.0)
+      expect(described_class.apply_platt(1.0, scale: 1.0, shift: -2.0)).to be_between(0.0, 1.0)
+    end
+
+    it "needs examples of both answers" do
+      expect { described_class.fit_platt([[0.2, true], [0.9, true]]) }.to raise_error(ArgumentError, /both answers/)
+    end
+  end
 end

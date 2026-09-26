@@ -12,7 +12,8 @@ module Layar
   class Error < StandardError; end
 
   class Config
-    attr_accessor :model, :hypothesis_template, :laya_model, :question, :temperature, :cache, :cache_ttl, :max_options
+    attr_accessor :model, :hypothesis_template, :laya_model, :question, :temperature, :bool_calibrations,
+                  :cache, :cache_ttl, :max_options
     attr_reader :backend
 
     def initialize
@@ -26,6 +27,7 @@ module Layar
       @laya_model          = nil   # directory with model.onnx, tokenizer.json, tokenizer_config.json, rl_agent_config.json
       @question            = "What is this about?"   # what Laya is asked for `choice` without `question:`
       @temperature         = 1.0   # set by Layar.calibrate!
+      @bool_calibrations   = {}    # statement => { scale:, shift: }, set by Layar.calibrate_bool!
       @cache               = nil   # anything with #fetch(key, expires_in:) e.g. Rails.cache
       @cache_ttl           = 3600
       @max_options         = 20
@@ -59,9 +61,40 @@ module Layar
       end
       before = Calibrator.ece(raw)
       t = Calibrator.fit(raw)
-      config.temperature = t
+      engine.config.temperature = t   # the running engine's config, even if Layar.engine was replaced
       after = Calibrator.ece(raw.map { |dist, gold| [Calibrator.apply(dist, t), gold] })
       { temperature: t, ece_before: before.round(3), ece_after: after.round(3) }
     end
+
+    # Fits a cut-off for one yes/no statement on your labelled examples and stores it, so
+    # Layar.bool(input, statement:) applies it from then on. Pass the same `yes:` / `no:` you will
+    # use in #bool; refit if you change them or the model.
+    #
+    #   Layar.calibrate_bool!(examples, statement: "Is the customer angry?")
+    #   examples: [{ input: "...", answer: true }, ...]  (both answers needed; 50+ of each is better)
+    #   # => { scale: 1.1, shift: 3.2, threshold: 0.05, accuracy_before: 0.67, accuracy_after: 0.92, ... }
+    #
+    # `threshold` is the raw probability that now maps to 0.5. Persist the fit with
+    # c.bool_calibrations[statement] = { scale:, shift: }.
+    def calibrate_bool!(examples, statement:, **kw)
+      raw = examples.map do |ex|
+        d = engine.bool(ex[:input], statement:, temperature: 1.0, calibrate: false, **kw)
+        [d.distribution[true], ex[:answer] == true]
+      end
+      fit   = Calibrator.fit_platt(raw)
+      after = raw.map { |p, yes| [Calibrator.apply_platt(p, fit), yes] }
+      engine.config.bool_calibrations[statement] = fit
+      threshold = Calibrator.sigmoid(-fit[:shift] / fit[:scale])
+      fit.merge(
+        threshold: threshold.round(4),
+        accuracy_before: bool_accuracy(raw).round(3), accuracy_after: bool_accuracy(after).round(3),
+        ece_before: bool_ece(raw).round(3), ece_after: bool_ece(after).round(3)
+      )
+    end
+
+    private
+
+    def bool_accuracy(pairs) = pairs.count { |p, yes| (p >= 0.5) == yes } / pairs.size.to_f
+    def bool_ece(pairs) = Calibrator.ece(pairs.map { |p, yes| [{ true => p, false => 1 - p }, yes] })
   end
 end
