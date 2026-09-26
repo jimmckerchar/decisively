@@ -7,7 +7,7 @@ RSpec.describe Layar do
     it "has sensible defaults" do
       expect(described_class.config).to have_attributes(
         model: "Xenova/bart-large-mnli", temperature: 1.0, cache: nil, cache_ttl: 3600, max_options: 20,
-        backend: :nli, laya_model: nil, question: "What is this about?"
+        backend: :laya, laya_model: "multilingual", question: "What is this about?"
       )
     end
 
@@ -57,6 +57,7 @@ RSpec.describe Layar do
     end
 
     before do
+      described_class.config.backend = :nli
       allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new("a" => 0.95, "b" => 0.05))
     end
 
@@ -120,7 +121,7 @@ RSpec.describe Layar do
 
   describe "calibration with a replaced engine" do
     it "stores fits on the running engine's config, not the module default" do
-      custom = Layar::Config.new
+      custom = Layar::Config.new.tap { |c| c.backend = :nli }
       described_class.engine = Layar::Engine.new(custom)
       allow(Layar::ZeroShot).to receive(:load).and_return(FakePipeline.new("a" => 0.95, "b" => 0.05))
 

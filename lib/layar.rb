@@ -21,10 +21,11 @@ module Layar
       # xlm-roberta, modernbert, bart). "Xenova/distilbert-base-uncased-mnli" is ~5x faster but less accurate.
       @model               = "Xenova/bart-large-mnli"
       @hypothesis_template = "This example is about {}."
+      # :laya runs a Laya decision model (`laya_model`), one pass per question.
       # :nli runs the zero-shot NLI `model` above, one pass per option.
-      # :laya runs a Laya decision model (ONNX export in `laya_model`), one pass per question.
-      @backend             = :nli
-      @laya_model          = nil   # directory with model.onnx, tokenizer.json, tokenizer_config.json, rl_agent_config.json
+      @backend             = :laya
+      # "multilingual" or "english" (downloaded on first use), "owner/repo/subfolder", or a local export directory.
+      @laya_model          = "multilingual"
       @question            = "What is this about?"   # what Laya is asked for `choice` without `question:`
       @temperature         = 1.0   # set by Layar.calibrate!
       @bool_calibrations   = {}    # statement => { scale:, shift: }, set by Layar.calibrate_bool!

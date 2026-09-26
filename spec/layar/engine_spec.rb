@@ -1,7 +1,7 @@
-RSpec.describe Layar::Engine do
+RSpec.describe Layar::Engine, "with the NLI backend" do
   subject(:engine) { described_class.new(config) }
 
-  let(:config)   { Layar::Config.new }
+  let(:config)   { Layar::Config.new.tap { |c| c.backend = :nli } }
   let(:scores)   { { "billing" => 0.7, "bug" => 0.2, "account" => 0.1 } }
   let(:pipeline) { FakePipeline.new(scores) }
 

@@ -1,9 +1,9 @@
-# End-to-end checks against the real default model, which the other specs stub out.
+# End-to-end checks against the real NLI model (bart-large-mnli), which the other specs stub out.
 # Slow, and the first run downloads the model: LAYAR_REAL_MODEL=1 bundle exec rspec spec/real_model_spec.rb
-RSpec.describe "the default model", :real_model do
+RSpec.describe "the NLI backend's default model", :real_model do
   # Load the model once: spec_helper resets Layar.engine after each example, and every
   # reload holds another copy of the weights (~2.4 GB for bart-large) until GC.
-  before(:all) { @engine = Layar::Engine.new(Layar::Config.new) }
+  before(:all) { @engine = Layar::Engine.new(Layar::Config.new.tap { |c| c.backend = :nli }) }
   before { Layar.engine = @engine }
 
   spam_signs = ["The sender is offering a prize.", "The message asks you to click a link."]

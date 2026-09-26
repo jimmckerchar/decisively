@@ -1,13 +1,13 @@
 # Layar
 
 Laya/Jev-style "System 1" decisions for Ruby: state in, typed answer + probabilities out.
-No text generation, no parsing. Runs locally via ONNX Runtime, either on a zero-shot NLI model
-(the default) or on Laya itself.
+No text generation, no parsing. Runs locally via ONNX Runtime on [Laya](https://huggingface.co/convaiinnovations/laya)
+itself (the default) or on a zero-shot NLI model.
 
 ```ruby
-Layar.choice(text, options: %w[billing bug account])     # => Decision(value: "billing", confidence: 0.91, ...)
-Layar.bool(text, statement: "This message is spam.")     # => Decision(value: true, ...)
-Layar.score(text, criterion: "The customer is angry.")   # => Decision(value: 0.83, ...)
+Layar.choice(text, options: %w[billing bug account])                  # => Decision(value: "billing", confidence: 0.97, ...)
+Layar.bool(text, statement: "Is this message spam, phishing or a scam?") # => Decision(value: true, ...)
+Layar.score(text, criterion: "Does the writer express anger?")         # => Decision(value: 0.83, ...)
 ```
 
 ## Installation
@@ -15,6 +15,15 @@ Layar.score(text, criterion: "The customer is angry.")   # => Decision(value: 0.
 ```sh
 bundle add layar   # or: gem install layar
 ```
+
+That's all. The first decision downloads the multilingual Laya model (1.3 GB, once) from
+[distinctinteractive/laya-onnx](https://huggingface.co/distinctinteractive/laya-onnx) into
+`~/.cache/informers`; call `Layar.warm!` at boot to do that up front. It needs ~2 GB of RAM while
+loaded. Needs Ruby 3.1+; the `onnxruntime` and `tokenizers` gems it depends on ship prebuilt
+binaries for common platforms, so there is nothing to compile (tested on x86-64 Linux).
+
+To download somewhere else, or to run without network access, set `Informers.cache_dir`, or copy
+a checkpoint folder from that repository and point `c.laya_model` at it.
 
 ## Rails
 
@@ -47,16 +56,16 @@ Persist the temperature and set `c.temperature = 1.85` in the initializer.
 
 ## Backends
 
-| | `:nli` (default) | `:laya` |
+| | `:laya` (default) | `:nli` |
 |---|---|---|
-| Model | a zero-shot NLI model via `informers`; default `Xenova/bart-large-mnli` | a [Laya](https://huggingface.co/convaiinnovations/laya) decision model, exported to ONNX |
-| Cost of a `choice` | one pass per option (batched into one call) | one pass per question, however many options |
-| Setup | downloads on first use | export once with the scripts below |
+| Model | a [Laya](https://huggingface.co/convaiinnovations/laya) decision model, exported to ONNX | a zero-shot NLI model via `informers`; default `Xenova/bart-large-mnli` |
+| Cost of a `choice` | one pass per question, however many options | one pass per option (batched into one call) |
+| Download | 1.3 GB (`multilingual`) or 1.7 GB (`english`), on first use | 1.6 GB, on first use |
 
 ```ruby
 Layar.configure do |c|
-  c.backend    = :laya
-  c.laya_model = "/models/laya/multilingual"   # directory written by script/laya/export.py
+  c.laya_model = "english"          # or "multilingual" (default), "owner/repo/subfolder", or a local folder
+  # c.backend  = :nli               # to use the NLI model instead
 end
 
 Layar.choice(text, options: %w[billing bug account], question: "Which team should handle this?")
@@ -131,10 +140,12 @@ messages still read as angry, and sarcasm is hard for every model tried. GoEmoti
 noisy (people often disagree on "annoyance"), so these figures understate a little, and Reddit is
 not your inbox: evaluate on your own messages.
 
-### Exporting Laya to ONNX
+### Exporting Laya to ONNX yourself
 
-Laya publishes PyTorch weights only, so export a checkpoint once. Needs Python 3.10+, about 1 GB of
-packages and up to ~4 GB of RAM while exporting:
+Laya publishes PyTorch weights only; Layar downloads ONNX exports of them from
+[distinctinteractive/laya-onnx](https://huggingface.co/distinctinteractive/laya-onnx). To build them
+yourself (to verify them, or to export a checkpoint you fine-tuned), you need Python 3.10+, about
+1 GB of packages and up to ~4 GB of RAM while exporting:
 
 ```sh
 python -m venv .laya && . .laya/bin/activate
@@ -148,7 +159,7 @@ python script/laya/parity.py multilingual models/laya/multilingual   # ONNX Runt
 |---|---|---|
 | `multilingual` | 1.3 GB | recommended: fastest, 100+ languages, inputs up to 1,024 tokens |
 | `english` | 1.7 GB | ModernBERT-large; slower on CPU |
-| `typed-decisions` | ~1.7 GB | fine-tuned to Laya's own benchmark; weaker in general use (export untested) |
+| `typed-decisions` | ~1.7 GB | fine-tuned to Laya's own benchmark; weaker in general use (export untested, not hosted) |
 
 Laya is by Convai Innovations, licensed Apache-2.0. `Layar::Laya` ports its input formatting from
 the `laya` 0.3.20 Python package.

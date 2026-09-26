@@ -1,3 +1,5 @@
+require "tmpdir"
+
 RSpec.describe Layar::Laya do
   subject(:laya) do
     described_class.new(session:, tokenizer:, special_tokens:, config: { "max_len" => max_len, "head_max_len" => head_max_len,
@@ -212,9 +214,46 @@ RSpec.describe Layar::Laya do
     expect { laya.predict("x", q: { type: :score, instructions: "Q" }) }.to raise_error(ArgumentError, /list of levels/)
   end
 
+  describe ".download" do
+    let(:hub) { Informers::Utils::Hub }
+
+    before do
+      allow(hub).to receive(:get_model_file) { |repo, file, *| "/cache/#{repo}/#{file}" }
+    end
+
+    it "fetches every file of a named checkpoint from Layar's Hub repo" do
+      expect(described_class.download("multilingual")).to eq("/cache/distinctinteractive/laya-onnx/multilingual")
+      described_class::FILES.each do |file|
+        expect(hub).to have_received(:get_model_file)
+          .with("distinctinteractive/laya-onnx", "multilingual/#{file}", true, progress_callback: anything)
+      end
+    end
+
+    it "accepts owner/repo/subfolder" do
+      expect(described_class.download("acme/laya-exports/v2/english")).to eq("/cache/acme/laya-exports/v2/english")
+      expect(hub).to have_received(:get_model_file).with("acme/laya-exports", "v2/english/model.onnx", true, anything)
+    end
+
+    it "explains what it accepts otherwise" do
+      ["spanish", "/missing/dir", "acme/laya"].each do |bad|
+        expect { described_class.download(bad) }.to raise_error(ArgumentError, /not a local directory, a checkpoint/)
+      end
+    end
+  end
+
   describe ".load" do
-    it "raises a clear error for a missing directory" do
-      expect { described_class.load("/nope") }.to raise_error(ArgumentError, /directory not found/)
+    it "uses a local directory as-is, without downloading" do
+      allow(described_class).to receive(:download)
+      allow(OnnxRuntime::InferenceSession).to receive(:new).and_return(session)
+      allow(Tokenizers).to receive(:from_file).and_return(tokenizer)
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, "tokenizer_config.json"), JSON.dump(special_tokens))
+        File.write(File.join(dir, "rl_agent_config.json"), JSON.dump({ "encoder" => "enc", "model_name" => "m" }))
+
+        expect(described_class.load(dir).identity).to eq("enc/m")
+        expect(described_class).not_to have_received(:download)
+        expect(OnnxRuntime::InferenceSession).to have_received(:new).with(File.join(dir, "model.onnx"))
+      end
     end
   end
 end

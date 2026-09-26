@@ -10,8 +10,8 @@ module Layar
   # pass however many options it has, and all questions about the same input share one
   # batched model call.
   #
-  # A model directory holds model.onnx, tokenizer.json, tokenizer_config.json and
-  # rl_agent_config.json. Sequence building, option rendering and temperature scaling are a
+  # A model directory holds model.onnx (+ model.onnx.data), tokenizer.json, tokenizer_config.json
+  # and rl_agent_config.json; see .load for downloading one. Sequence building, option rendering and temperature scaling are a
   # port of laya 0.3.20 (Apache-2.0): common.build_sequence, common.render_options,
   # common.temp_bucket and Agent._decode_answers.
   class Laya
@@ -21,8 +21,15 @@ module Layar
     # Laya refuses fitted temperatures outside this range; below 0.5 they sharpen coin flips into certainties.
     TEMP_RANGE = 0.5..5.0
 
-    def self.load(dir)
-      raise ArgumentError, "Laya model directory not found: #{dir.inspect}" unless File.directory?(dir)
+    # Hugging Face repo holding ONNX exports of each checkpoint (made with script/laya/export.py).
+    HUB_REPO    = "distinctinteractive/laya-onnx"
+    CHECKPOINTS = %w[multilingual english].freeze
+    FILES       = %w[model.onnx model.onnx.data tokenizer.json tokenizer_config.json rl_agent_config.json].freeze
+
+    # model: a checkpoint name ("multilingual", "english") downloaded from HUB_REPO, "owner/repo/subfolder"
+    # on the Hugging Face Hub, or a local export directory. Downloads happen once, into Informers' cache.
+    def self.load(model)
+      dir = File.directory?(model.to_s) ? model.to_s : download(model.to_s)
 
       new(
         session:          OnnxRuntime::InferenceSession.new(File.join(dir, "model.onnx")),
@@ -30,6 +37,25 @@ module Layar
         special_tokens:   JSON.parse(File.read(File.join(dir, "tokenizer_config.json"))),
         config:           JSON.parse(File.read(File.join(dir, "rl_agent_config.json")))
       )
+    end
+
+    # => local directory holding FILES
+    def self.download(model)
+      repo, subfolder =
+        if CHECKPOINTS.include?(model)
+          [HUB_REPO, model]
+        elsif (parts = model.split("/")).size >= 3 && parts.none?(&:empty?)
+          [parts.first(2).join("/"), parts.drop(2).join("/")]
+        else
+          raise ArgumentError, "Laya model #{model.inspect} is not a local directory, a checkpoint " \
+                               "(#{CHECKPOINTS.join(', ')}) or owner/repo/subfolder on the Hugging Face Hub"
+        end
+
+      paths = FILES.map do |file|
+        Informers::Utils::Hub.get_model_file(repo, "#{subfolder}/#{file}", true,
+                                             progress_callback: Informers::DEFAULT_PROGRESS_CALLBACK)
+      end
+      File.dirname(paths.first)
     end
 
     # special_tokens: tokenizer_config.json (cls_token, sep_token, mask_token, pad_token)
